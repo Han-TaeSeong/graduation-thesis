@@ -8,8 +8,7 @@ int main()
 	int a=5 , b;
 	printf("%d",a);
 	
-	printf("tsts");
-	printf("mm");
+	printf("gksxotjd");
 	return 0;
 	
 }
