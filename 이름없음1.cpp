@@ -9,6 +9,7 @@ int main()
 	printf("%d",a);
 	
 	printf("tsts");
+	printf("mm");
 	return 0;
 	
 }
