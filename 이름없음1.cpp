@@ -9,6 +9,7 @@ int main()
 	printf("%d",a);
 	
 	printf("gksxotjd");
+	printf("zz");
 	return 0;
 	
 }
