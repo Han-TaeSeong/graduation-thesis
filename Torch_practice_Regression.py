@@ -6,16 +6,26 @@
 # https://wikidocs.net/57805 참조
 
 import numpy as np
+
+import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torch.onnx as onnx
+
+import torchvision.datasets as dsets
+import torchvision.transforms as transforms
+import torchvision.models as models
 
 import matplotlib.pyplot as plt
 
 from torch.utils.data import TensorDataset
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+
+device = torch.device("cuda")
 
 # Numpy로 텐서 만들기
 # t = np.array([[0,1,2,3,4,5,6],[1,2,3,4,5,6,7],[2,3,4,5,6,7,8]])
@@ -474,45 +484,43 @@ from torch.utils.data import DataLoader
 
 
 ############# 로지스틱 클래스로 구현
-torch.manual_seed(1)
-x_data = [[1, 2], [2, 3], [3, 1], [4, 3], [5, 3], [6, 2]]
-y_data = [[0], [0], [0], [1], [1], [1]]
-x_train = torch.FloatTensor(x_data)
-y_train = torch.FloatTensor(y_data)
-
-
-class BinaryClassifier(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.linear = nn.Linear(2, 1)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        return self.sigmoid(self.linear(x))
-
-
-model = BinaryClassifier()
-optimizer = optim.SGD(model.parameters(), lr=1)
-np_epochs = 1000
-
-for epoch in range(np_epochs + 1):
-    prediction = model(x_train)
-    cost = F.binary_cross_entropy(prediction, y_train)
-
-    optimizer.zero_grad()
-    cost.backward()
-    optimizer.step()
-    if epoch % 100 == 0:
-        pred = prediction >= torch.FloatTensor([0.5])
-        correct_pred = y_train == pred
-        accuracy = correct_pred.sum().item() / len(correct_pred)
-        print(f'accuracy : {accuracy * 100:.2f}%')
-
-
+# torch.manual_seed(1)
+# x_data = [[1, 2], [2, 3], [3, 1], [4, 3], [5, 3], [6, 2]]
+# y_data = [[0], [0], [0], [1], [1], [1]]
+# x_train = torch.FloatTensor(x_data)
+# y_train = torch.FloatTensor(y_data)
+#
+#
+# class BinaryClassifier(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.linear = nn.Linear(2, 1)
+#         self.sigmoid = nn.Sigmoid()
+#
+#     def forward(self, x):
+#         return self.sigmoid(self.linear(x))
+#
+#
+# model = BinaryClassifier()
+# optimizer = optim.SGD(model.parameters(), lr=1)
+# np_epochs = 1000
+#
+# for epoch in range(np_epochs + 1):
+#     prediction = model(x_train)
+#     cost = F.binary_cross_entropy(prediction, y_train)
+#
+#     optimizer.zero_grad()
+#     cost.backward()
+#     optimizer.step()
+#     if epoch % 100 == 0:
+#         pred = prediction >= torch.FloatTensor([0.5])
+#         correct_pred = y_train == pred
+#         accuracy = correct_pred.sum().item() / len(correct_pred)
+#         print(f'accuracy : {accuracy * 100:.2f}%')
 
 
 ############# 소프트맥스 회귀 시작  원-핫 인코딩부터  1,2,3,4로한다면 cost를 구할때 상관성이 첨가가 된다.
-#Softmax에서 e를 쓰는 이유
+# Softmax에서 e를 쓰는 이유
 # 자연상수 e를 쓰는 이유는 두 가지
 # 1. 미분이 용이 -> gradient를 발생시켜 역전파~
 # 2. 입력 벡터가 더 잘 구분되게(큰 값은 더 크게, 작은 값은 더 작게) //지수함수니까
@@ -527,3 +535,207 @@ for epoch in range(np_epochs + 1):
 # y = torch.randint(5,(3,)).long()
 # y_one_hot = torch.zeros_like(hypothesis)
 # y_one_hot.scatter_(1, y.unsqueeze(1), 1)
+
+
+########### 소프트맥스 회귀 구현  로우레벨
+# torch.manual_seed(1)
+# x_train = [[1, 2, 1, 1],
+#            [2, 1, 3, 2],
+#            [3, 1, 3, 4],
+#            [4, 1, 5, 5],
+#            [1, 7, 5, 5],
+#            [1, 2, 5, 6],
+#            [1, 6, 6, 6],
+#            [1, 7, 7, 7]]
+# y_train = [2, 2, 2, 1, 1, 1, 0, 0]
+# x_train = torch.FloatTensor(x_train)
+# y_train = torch.LongTensor(y_train)
+#
+# y_one_hot = torch.zeros(8, 3)
+# y_one_hot.scatter_(1, y_train.unsqueeze(1), 1)
+#
+# w = torch.zeros((4, 3), requires_grad=True)
+# b = torch.zeros(1, requires_grad=True)
+#
+# optimizer = optim.SGD([w,b],lr=0.1)
+# nb_epochs = 1000
+#
+#
+# for epoch in range(nb_epochs+1):
+#     hypothesis = F.softmax(x_train.matmul(w)+b,dim=1)
+#     cost = (y_one_hot*-torch.log(hypothesis)).sum(dim=1).mean()
+#
+#     optimizer.zero_grad()
+#     cost.backward()
+#     optimizer.step()
+#
+#     if epoch % 100 ==0:
+#         print(f'Epoch {epoch:4d}  Cost {cost.item():.6f}')
+
+
+##### 소프트맥스 회귀 구현 하이레벨
+# torch.manual_seed(1)
+# x_train = [[1, 2, 1, 1],
+#            [2, 1, 3, 2],
+#            [3, 1, 3, 4],
+#            [4, 1, 5, 5],
+#            [1, 7, 5, 5],
+#            [1, 2, 5, 6],
+#            [1, 6, 6, 6],
+#            [1, 7, 7, 7]]
+# y_train = [2, 2, 2, 1, 1, 1, 0, 0]
+# x_train = torch.FloatTensor(x_train)
+# y_train = torch.LongTensor(y_train)
+#
+# w = torch.zeros((4, 3), requires_grad=True)
+# b = torch.zeros(1, requires_grad=True)
+#
+# optimizer = optim.SGD([w,b],lr=0.1)
+#
+# nb_epochs = 1000
+#
+# for epoch in range(nb_epochs+1):
+#
+#     z = x_train.matmul(w)+b
+#     cost = F.cross_entropy(z,y_train)
+#     optimizer.zero_grad()
+#     cost.backward()
+#     optimizer.step()
+#
+#     if epoch % 100 ==0:
+#         print(f'Epoch {epoch:4d}  Cost {cost.item():.6f}')
+
+
+#####  소프트맥스 횓귀 nn.Moduel로 구현
+# torch.manual_seed(1)
+# x_train = [[1, 2, 1, 1],
+#            [2, 1, 3, 2],
+#            [3, 1, 3, 4],
+#            [4, 1, 5, 5],
+#            [1, 7, 5, 5],
+#            [1, 2, 5, 6],
+#            [1, 6, 6, 6],
+#            [1, 7, 7, 7]]
+# y_train = [2, 2, 2, 1, 1, 1, 0, 0]
+# x_train = torch.FloatTensor(x_train)
+# y_train = torch.LongTensor(y_train)
+#
+# model = nn.Linear(4,3)
+# optimizer = optim.SGD(model.parameters(),lr=0.1)
+# nb_epochs = 1000
+#
+# for epoch in range(nb_epochs+1):
+#     prediction = model(x_train)
+#     cost = F.cross_entropy(prediction,y_train)
+#     optimizer.zero_grad()
+#     cost.backward()
+#     optimizer.step()
+#
+#     if epoch % 100 ==0:
+#         print(f'Epoch {epoch:4d}  Cost {cost.item():.6f}')
+
+
+########## 소프트맥스 회귀 클래스로 구현
+# torch.manual_seed(1)
+# x_train = [[1, 2, 1, 1],
+#            [2, 1, 3, 2],
+#            [3, 1, 3, 4],
+#            [4, 1, 5, 5],
+#            [1, 7, 5, 5],
+#            [1, 2, 5, 6],
+#            [1, 6, 6, 6],
+#            [1, 7, 7, 7]]
+# y_train = [2, 2, 2, 1, 1, 1, 0, 0]
+# x_train = torch.FloatTensor(x_train)
+# y_train = torch.LongTensor(y_train)
+#
+#
+# class SoftmaxClassifierModel(nn.Module):
+#     def __init__(self):
+#         super().__init__()
+#         self.linear = nn.Linear(4, 3)
+#
+#     def forward(self, x):
+#         return self.linear(x)
+#
+#
+# model = SoftmaxClassifierModel()
+# optimizer = optim.SGD(model.parameters(), lr=0.1)
+# nb_epochs = 1000
+#
+# for epoch in range(nb_epochs + 1):
+#     prediction = model(x_train)
+#     cost = F.cross_entropy(prediction, y_train)
+#     optimizer.zero_grad()
+#     cost.backward()
+#     optimizer.step()
+#
+#     if epoch % 100 == 0:
+#         print(f'Epoch {epoch:4d}  Cost {cost.item():.6f}')
+
+
+############## 소프트맥스 회귀로 MNIST 분류
+# random.seed(777)
+# torch.manual_seed(777)
+# torch.cuda.manual_seed_all(777)
+# training_epochs = 15
+# batch_size = 100
+#
+# mnist_train = dsets.MNIST(root='MNIST_data/',
+#                           train=True,
+#                           transform=transforms.ToTensor(),
+#                           download=True)
+#
+# mnist_test = dsets.MNIST(root='MNIST_data/',
+#                          train=False,
+#                          transform=transforms.ToTensor(),
+#                          download=True)
+#
+# data_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, drop_last=True)
+#
+# linear = nn.Linear(28 * 28, 10, bias=True).to(device)
+# criterion = nn.CrossEntropyLoss()
+#
+# optimizer = optim.SGD(linear.parameters(), lr=0.1)
+#
+# for epoch in range(training_epochs):
+#     avg_cost = 0
+#     total_batch = len(data_loader)
+#
+#     for x, y in data_loader:
+#         x = x.view(-1, 28 * 28).to(device)
+#         y = y.to(device)
+#
+#         optimizer.zero_grad()
+#         hypothesis = linear(x)
+#         cost = criterion(hypothesis, y)
+#         cost.backward()
+#         optimizer.step()
+#
+#         avg_cost += cost / total_batch
+#     print(f'Epoch {epoch + 1}  Cost {avg_cost}')
+#
+# with torch.no_grad():
+#     x_test = mnist_test.data.view(-1, 28 * 28).float().to(device)
+#     y_test = mnist_test.targets.to(device)
+#
+#     prediction = linear(x_test)
+#     correct_prediction = torch.argmax(prediction, 1) == y_test
+#     accuracy = correct_prediction.float().mean()
+#     print(accuracy)
+#
+#     r = random.randint(0, len(mnist_test))
+#     X_single_data = mnist_test.data[r].view(-1, 28 * 28).float().to(device)
+#     Y_single_data = mnist_test.targets[r].to(device)
+#
+#     print('Label: ', Y_single_data.item())
+#     single_prediction = linear(X_single_data)
+#     print('Prediction: ', torch.argmax(single_prediction, 1).item())
+#
+#     plt.imshow(mnist_test.data[r].view(28, 28), cmap='Greys', interpolation='nearest')
+#     plt.show()
+#
+#
+# ############## 모델 저장하기
+# torch.save(linear.state_dict(), 'linear_wights.pth')
+# torch.save(linear, 'linear.pth')
