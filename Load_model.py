@@ -38,3 +38,26 @@ from torch.utils.data import DataLoader
 # print(y_test)
 # model.train()
 # print(torch.argmax(model(x_test)))
+
+
+
+#
+# x = torch.tensor(digits.data,dtype=torch.float32)
+# y = torch.tensor(digits.target,dtype=torch.int64)
+
+# a = torch.Tensor([[1,2],[3,4],[5,6]])
+# b = torch.Tensor([1,2,3,4,5,6])
+# print(b.view_as(a))
+
+
+class A(object):
+    def do_work(self):
+        print('A의 do_work')
+
+
+class B(A):  # A를 상속받는 클래스
+    def do_work(self, x):
+        print(1)
+        super(B, self).do_work()
+        print(2)
+        super(A, self).do_work()
