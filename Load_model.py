@@ -49,15 +49,5 @@ from torch.utils.data import DataLoader
 # b = torch.Tensor([1,2,3,4,5,6])
 # print(b.view_as(a))
 
-
-class A(object):
-    def do_work(self):
-        print('A의 do_work')
-
-
-class B(A):  # A를 상속받는 클래스
-    def do_work(self, x):
-        print(1)
-        super(B, self).do_work()
-        print(2)
-        super(A, self).do_work()
+a ='aaarw'.join('123445')
+print(a)
